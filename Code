@@ -1,0 +1,666 @@
+local AGController = {}
+
+local BannedUsers = {2746910855}
+
+if table.find(BannedUsers, game.CreatorId) then
+	script.Parent.Parent:Destroy()
+	warn("Owner of group/game has been blacklisted from using Control1 Products.")
+end
+
+function AGController:SurfaceReader(Reader)
+	local ScannerConfig = require(Reader.ScannerConfig)
+	local MainConfig = Reader.Parent.Parent.MainConfig
+	local SystemConfig = require(MainConfig)
+	local Sensor = Reader.Sensor
+	local LED = Reader.StatusLED
+
+	local Debounce = 0	
+
+	local function Color(Status)
+		if Status == "Opened" then
+			local Tweenservice = game:GetService("TweenService")
+			local Tween = Tweenservice:Create(LED, TweenInfo.new(1.5), {Color = Color3.fromRGB(26, 30, 255)}):Play()
+		elseif Status == "Closed" then
+			local Tweenservice = game:GetService("TweenService")
+			local Tween = Tweenservice:Create(LED, TweenInfo.new(1.5), {Color = Color3.fromRGB(223, 223, 222)}):Play()
+		elseif Status == "Unauthorized" then
+			local Tweenservice = game:GetService("TweenService")
+			local Tween = Tweenservice:Create(LED, TweenInfo.new(1.5), {Color = Color3.fromRGB(223, 0, 0)}):Play()
+		end
+	end
+
+	local function KeycardAuthorized()
+		if Debounce == 0 then
+			SystemConfig.DoorOpen()
+			Color("Opened")
+			MainConfig:SetAttribute("DoorStatus", "Open")
+			Debounce = 1
+			wait(SystemConfig.DoorWait)
+			Debounce = 0
+			Color("Closed")
+			MainConfig:SetAttribute("DoorStatus", "Closed")
+			SystemConfig.DoorClose()
+		end
+	end
+
+	MainConfig.Changed:Connect(function ()
+		local YEP = MainConfig:GetAttribute("DoorStatus")
+		if YEP == "Open" then
+			Color("Opened")
+			Sensor.CanTouch = true
+			Debounce = 1
+		elseif YEP == "Closed" then
+			Color("Closed")
+			Debounce = 0
+		elseif YEP == "unauthed" then
+			Color("Unauthorized")
+			wait(2)
+			Color("Closed")
+			Debounce = 0
+		elseif YEP == "Locked" then
+			Color("Unauthorized")
+			Sensor.CanTouch = false
+			Debounce = 1
+		end
+	end)
+
+	local function KeycardUnauthorized()
+		if Debounce == 0 then
+			Debounce = 1
+			Color("Unauthorized")
+			SystemConfig.AccessDenied()
+			SystemConfig.DoorClose()
+			MainConfig:SetAttribute("DoorStatus", "Unauthed")
+			wait(2)
+			Debounce = 0
+			Color("Closed")
+		end
+	end
+
+
+	Sensor.Touched:Connect(function (TouchedPart)
+		if TouchedPart.Parent:FindFirstChild("AccessguardLevel") then
+			if Debounce == 0 then
+				local Level = TouchedPart.Parent:FindFirstChild("AccessguardLevel")
+				if table.find(ScannerConfig.CardsAccepted, Level.Value) then
+					local Player = game.Players:GetPlayerFromCharacter(TouchedPart.Parent.Parent)
+					local UserID = Player.UserId
+					if ScannerConfig.Whitelist == true then
+						if table.find(SystemConfig["Main-Whitelist-UserIDs"], UserID) then
+							KeycardAuthorized()
+						else
+							for GroupID, Ranks in pairs(SystemConfig["Main-Whitelist-Groups"]) do
+								local PlayerRank = Player:GetRankInGroup(GroupID)
+								if table.find(SystemConfig["Main-Whitelist-Groups"][GroupID], PlayerRank) then
+									KeycardAuthorized()
+								else
+									KeycardUnauthorized()
+								end
+							end
+						end
+					end
+				else
+					KeycardUnauthorized()
+				end
+			end
+		else
+			if ScannerConfig.HumanDetection == true then
+				if TouchedPart:IsA("Humanoid") or TouchedPart.Name == "HumanoidRootPart" then
+					local Player = game:GetService("Players"):GetPlayerFromCharacter(TouchedPart.Parent)
+					if Player.Backpack:FindFirstChild("AccessguardLevel", true) then
+						if Debounce == 0 then
+							local Level = Player.Backpack:FindFirstChild("AccessguardLevel", true)
+							if table.find(ScannerConfig.CardsAccepted, Level.Value) then
+								local UserID = Player.UserId
+								if ScannerConfig.Whitelist == true then
+									if table.find(SystemConfig["Main-Whitelist-UserIDs"], UserID) then
+										KeycardAuthorized()
+									else
+										for GroupID, Ranks in pairs(SystemConfig["Main-Whitelist-Groups"]) do
+											local PlayerRank = Player:GetRankInGroup(GroupID)
+											if table.find(SystemConfig["Main-Whitelist-Groups"][GroupID], PlayerRank) then
+												KeycardAuthorized()
+											else
+												KeycardUnauthorized()
+											end
+										end
+									end
+								end
+							else
+								KeycardUnauthorized()
+							end
+						end
+					end
+				end
+			end
+		end
+	end)
+end
+
+function AGController:SurfaceCode(Reader)
+	local ScannerConfig = require(Reader.ScannerConfig)
+	local MainConfig = Reader.Parent.Parent.MainConfig
+	local SystemConfig = require(MainConfig)
+	local Sensor = Reader.Sensor
+	local LED = Reader.StatusLED
+	local Screen = Reader.Screen.SurfaceGui.PasswordScreen
+
+	local Debounce = 0	
+
+	local function Color(Status)
+		if Status == "Opened" then
+			local Tweenservice = game:GetService("TweenService")
+			local Tween = Tweenservice:Create(LED, TweenInfo.new(1.5), {Color = Color3.fromRGB(26, 30, 255)}):Play()
+		elseif Status == "Closed" then
+			local Tweenservice = game:GetService("TweenService")
+			local Tween = Tweenservice:Create(LED, TweenInfo.new(1.5), {Color = Color3.fromRGB(223, 223, 222)}):Play()
+		elseif Status == "Unauthorized" then
+			local Tweenservice = game:GetService("TweenService")
+			local Tween = Tweenservice:Create(LED, TweenInfo.new(1.5), {Color = Color3.fromRGB(223, 0, 0)}):Play()
+		end
+	end
+
+	local function KeycardAuthorized()
+		if Debounce == 0 then
+			SystemConfig.DoorOpen()
+			Color("Opened")
+			MainConfig:SetAttribute("DoorStatus", "Open")
+			Debounce = 1
+			wait(SystemConfig.DoorWait)
+			Debounce = 0
+			Color("Closed")
+			MainConfig:SetAttribute("DoorStatus", "Closed")
+			SystemConfig.DoorClose()
+		end
+	end
+
+	MainConfig.Changed:Connect(function ()
+		local YEP = MainConfig:GetAttribute("DoorStatus")
+		if YEP == "Open" then
+			Color("Opened")
+			Sensor.CanTouch = true
+			Debounce = 1
+		elseif YEP == "Closed" then
+			Color("Closed")
+			Debounce = 0
+		elseif YEP == "unauthed" then
+			Color("Unauthorized")
+			wait(2)
+			Color("Closed")
+			Debounce = 0
+		elseif YEP == "Locked" then
+			Color("Unauthorized")
+			Sensor.CanTouch = false
+			Debounce = 1
+		end
+	end)
+
+	local function KeycardUnauthorized()
+		if Debounce == 0 then
+			Debounce = 1
+			Color("Unauthorized")
+			SystemConfig.AccessDenied()
+			SystemConfig.DoorClose()
+			MainConfig:SetAttribute("DoorStatus", "Unauthed")
+			wait(2)
+			Debounce = 0
+			Color("Closed")
+		end
+	end
+
+	local Codeinputted = ""
+	local CorrectCode = ScannerConfig.Code
+
+	local DoubleAuthP1Correct = false
+
+	Screen.Button0.MouseButton1Click:Connect(function ()
+		Codeinputted = Codeinputted .. 0
+	end)
+
+	Screen.Button1.MouseButton1Click:Connect(function ()
+		Codeinputted = Codeinputted .. 1
+	end)
+
+	Screen.Button2.MouseButton1Click:Connect(function ()
+		Codeinputted = Codeinputted .. 2
+	end)
+	Screen.Button3.MouseButton1Click:Connect(function ()
+		Codeinputted = Codeinputted .. 3
+	end)
+	Screen.Button4.MouseButton1Click:Connect(function ()
+		Codeinputted = Codeinputted .. 4
+	end)
+	Screen.Button5.MouseButton1Click:Connect(function ()
+		Codeinputted = Codeinputted .. 5
+	end)
+	Screen.Button6.MouseButton1Click:Connect(function ()
+		Codeinputted = Codeinputted .. 6
+	end)
+	Screen.Button7.MouseButton1Click:Connect(function ()
+		Codeinputted = Codeinputted .. 7
+	end)
+	Screen.Button8.MouseButton1Click:Connect(function ()
+		Codeinputted = Codeinputted .. 8
+	end)
+	Screen.Button9.MouseButton1Click:Connect(function ()
+		Codeinputted = Codeinputted .. 9
+	end)
+	Screen.Check.MouseButton1Click:Connect(function ()
+		if ScannerConfig.DoubleAuth == false then
+			if Codeinputted == CorrectCode then
+				KeycardAuthorized()
+				Codeinputted = ""
+				DoubleAuthP1Correct = false
+			else
+				KeycardUnauthorized()
+				Codeinputted = ""
+				DoubleAuthP1Correct = false
+			end
+		else
+			if DoubleAuthP1Correct == true then
+				if Codeinputted == CorrectCode then
+					KeycardAuthorized()
+					Codeinputted = ""
+					DoubleAuthP1Correct = false
+				else
+					KeycardUnauthorized()
+					Codeinputted = ""
+					DoubleAuthP1Correct = false
+				end
+			else
+				KeycardUnauthorized()
+				Codeinputted = ""
+				DoubleAuthP1Correct = false
+			end
+		end
+	end)
+	Screen.Reset.MouseButton1Click:Connect(function ()
+		Codeinputted = ""
+	end)
+
+	Sensor.Touched:Connect(function (TouchedPart)
+		if TouchedPart.Parent:FindFirstChild("AccessguardLevel") then
+			if Debounce == 0 then
+				local Level = TouchedPart.Parent:FindFirstChild("AccessguardLevel")
+				if table.find(ScannerConfig.CardsAccepted, Level.Value) then
+					if ScannerConfig.DoubleAuth == false then
+						local Player = game.Players:GetPlayerFromCharacter(TouchedPart.Parent.Parent)
+						local UserID = Player.UserId
+						if ScannerConfig.Whitelist == true then
+							if table.find(SystemConfig["Main-Whitelist-UserIDs"], UserID) then
+								KeycardAuthorized()
+							else
+								for GroupID, Ranks in pairs(SystemConfig["Main-Whitelist-Groups"]) do
+									local PlayerRank = Player:GetRankInGroup(GroupID)
+									if table.find(SystemConfig["Main-Whitelist-Groups"][GroupID], PlayerRank) then
+										KeycardAuthorized()
+									else
+										KeycardUnauthorized()
+									end
+								end
+							end
+						end
+					else
+						local Player = game.Players:GetPlayerFromCharacter(TouchedPart.Parent)
+						local UserID = Player.UserId
+						if ScannerConfig.Whitelist == true then
+							if table.find(SystemConfig["Main-Whitelist-UserIDs"], UserID) then
+								DoubleAuthP1Correct = true
+							else
+								for GroupID, Ranks in pairs(SystemConfig["Main-Whitelist-Groups"]) do
+									local PlayerRank = Player:GetRankInGroup(GroupID)
+									if table.find(SystemConfig["Main-Whitelist-Groups"][GroupID], PlayerRank) then
+										DoubleAuthP1Correct = true
+									else
+										KeycardUnauthorized()
+									end
+								end
+							end
+						end
+					end
+				else
+					if ScannerConfig.DoubleAuth == false then
+						KeycardUnauthorized()
+					else
+						DoubleAuthP1Correct = false
+					end
+				end
+			end
+		else
+			if ScannerConfig.HumanDetection == true then
+				if TouchedPart:IsA("Humanoid") or TouchedPart.Name == "HumanoidRootPart" then
+					local Player = game:GetService("Players"):GetPlayerFromCharacter(TouchedPart.Parent)
+					if Player.Backpack:FindFirstChild("AccessguardLevel", true) then
+						if Debounce == 0 then
+							local Level = Player.Backpack:FindFirstChild("AccessguardLevel", true)
+							if table.find(ScannerConfig.CardsAccepted, Level.Value) then
+								local UserID = Player.UserId
+								if ScannerConfig.Whitelist == true then
+									if table.find(SystemConfig["Main-Whitelist-UserIDs"], UserID) then
+										KeycardAuthorized()
+									else
+										for GroupID, Ranks in pairs(SystemConfig["Main-Whitelist-Groups"]) do
+											local PlayerRank = Player:GetRankInGroup(GroupID)
+											if table.find(SystemConfig["Main-Whitelist-Groups"][GroupID], PlayerRank) then
+												KeycardAuthorized()
+											else
+												KeycardUnauthorized()
+											end
+										end
+									end
+								end
+							else
+								KeycardUnauthorized()
+							end
+						end
+					end
+				end
+			end
+		end
+	end)
+end
+
+function AGController:SurfaceExitButton(Button)
+	local LED = Button.StatusLED
+	local MainConfig = Button.Parent.Parent.MainConfig
+	local SystemConfig = require(MainConfig)
+	local ButtonConfig = require(Button.ButtonConfig)
+	local Debounce = 0
+
+	local function Color(Status)
+		if Status == "Opened" then
+			local Tweenservice = game:GetService("TweenService")
+			local Tween = Tweenservice:Create(LED, TweenInfo.new(1.5), {Color = Color3.fromRGB(0, 255, 0)}):Play()
+		elseif Status == "Closed" then
+			local Tweenservice = game:GetService("TweenService")
+			local Tween = Tweenservice:Create(LED, TweenInfo.new(1.5), {Color = Color3.fromRGB(223, 223, 222)}):Play()
+		elseif Status == "Unauthorized" then
+			local Tweenservice = game:GetService("TweenService")
+			local Tween = Tweenservice:Create(LED, TweenInfo.new(1.5), {Color = Color3.fromRGB(223, 0, 0)}):Play()
+		end
+	end
+
+	MainConfig.Changed:Connect(function ()
+		local YEP = MainConfig:GetAttribute("DoorStatus")
+		if YEP == "Open" then
+			Color("Opened")
+			Debounce = 1
+		elseif YEP == "Closed" then
+			Color("Closed")
+			Debounce = 0
+		elseif YEP == "Locked" then
+			Color("Unauthorized")
+			Debounce = 1
+		end
+	end)
+
+	local TweenService = game:GetService("TweenService")
+
+	local ButtonUnPressedGoal = {Size = Vector3.new(0.035, Button.Button.Size.Y, Button.Button.Size.Z)}
+	local ButtonPressedGoal = {Size = Vector3.new(0.032, Button.Button.Size.Y, Button.Button.Size.Z)}
+
+	local ButtonTweenInfo = TweenInfo.new(1.5, Enum.EasingStyle.Linear)
+
+	local function ButtonFunction()
+		if Debounce == 0 then
+			SystemConfig.DoorOpen()
+			Color("Opened")
+			MainConfig:SetAttribute("DoorStatus", "Open")
+			Debounce = 1
+			local UnPressed = TweenService:Create(Button.Button, ButtonTweenInfo, ButtonPressedGoal):Play()
+			wait(SystemConfig.DoorWait)
+			local Pressed = TweenService:Create(Button.Button, ButtonTweenInfo, ButtonUnPressedGoal):Play()
+			Debounce = 0
+			Color("Closed")
+			MainConfig:SetAttribute("DoorStatus", "Closed")
+			SystemConfig.DoorClose()
+		end
+	end
+
+	Button.Button:FindFirstChildWhichIsA("ClickDetector").MouseClick:Connect(function (Player)
+		local Player = Player
+		local UserID = Player.UserId
+		if ButtonConfig.Whitelist == true then
+			if table.find(SystemConfig["Main-Whitelist-UserIDs"], UserID) then
+				ButtonFunction()
+			else
+				for GroupID, Ranks in pairs(SystemConfig["Main-Whitelist-Groups"]) do
+					local PlayerRank = Player:GetRankInGroup(GroupID)
+					if table.find(SystemConfig["Main-Whitelist-Groups"][GroupID], PlayerRank) then
+						ButtonFunction()
+					else
+						return
+					end
+				end
+			end
+		end
+	end)
+end
+
+-- AGLoader ---- AGLoader ---- AGLoader ---- AGLoader ---- AGLoader ---- AGLoader ---- AGLoader ---- AGLoader ---- AGLoader ---- AGLoader --
+
+function AGController:Load(Script)
+	 --warn("AccessGuard is currently offline for repairs/updates. Please wait")
+	local MasterAPI = game.ReplicatedStorage:FindFirstChild("AGMasterAPI")
+	local MainConfig = Script.Parent
+	local SystemConfig = require(Script.Parent)
+
+	local function MasterAPIFunction(Data)
+		if Data == "DoorsOpen" then
+			Script.SystemAPI:Invoke("Open")
+		elseif Data == "DoorsClose" then
+			Script.SystemAPI:Invoke("Close")
+		elseif Data == "DoorsLock" then
+			Script.SystemAPI:Invoke("Lock")
+		elseif Data == "DoorsHold" then
+			Script.SystemAPI:Invoke("Hold")
+		end
+	end
+
+	local function SystemAPI(Data)
+		if Data == "Open" then
+			SystemConfig.DoorOpen()
+			MainConfig:SetAttribute("DoorStatus", "Open")
+			wait(SystemConfig.DoorWait)
+			MainConfig:SetAttribute("DoorStatus", "Closed")
+			SystemConfig.DoorClose()
+		end
+		if Data == "Close" then
+			MainConfig:SetAttribute("DoorStatus", "Closed")
+			SystemConfig.DoorClose()
+		end
+		if Data == "Lock" then
+			MainConfig:SetAttribute("DoorStatus", "Locked")
+			SystemConfig.DoorClose()
+		end
+		if Data == "Hold" then
+			SystemConfig.DoorOpen()
+			MainConfig:SetAttribute("DoorStatus", "Open")
+		end
+	end
+
+	Script.SystemAPI.OnInvoke = SystemAPI
+
+	if MasterAPI then
+		if SystemConfig.MasterAPI == true then
+			MasterAPI.Event:Connect(MasterAPIFunction)
+		else
+			return
+		end
+	else
+		local API = Instance.new("BindableEvent")
+		API.Name = "AGMasterAPI"
+		API.Parent = game.ReplicatedStorage
+		if SystemConfig.MasterAPI == true then
+			API.Event:Connect(MasterAPIFunction)
+		else
+			return
+		end
+	end
+
+	local DoorController = Script.Parent.Parent:FindFirstChild("Door Controller")
+	local DoorHinge = DoorController.Door.Hinge
+
+	local TweenService = game:GetService("TweenService")
+
+	--local DCOpenTween = TweenService:Create(DoorHinge, TweenInfo.new(3.5), {Orientation = Vector3.new(DoorHinge.Orientation.X, DoorHinge.Orientation.Y - 140, DoorHinge.Orientation.Z)})
+	local DCOpenTween = TweenService:Create(DoorHinge, TweenInfo.new(3.5), {CFrame = DoorHinge.CFrame * CFrame.Angles(0, math.rad(-140), 0)})
+	local DCCloseTween = TweenService:Create(DoorHinge, TweenInfo.new(2), {CFrame = DoorHinge.CFrame * CFrame.Angles(0, 0, 0)})
+
+	local DCInuse = false
+
+	if DoorController then
+		local GUI = DoorController.DoorControllerGUI
+		local Clicker = DoorController.Door.Button.ClickDetector
+
+		Clicker.MouseClick:Connect(function (Player)
+			--if DCInuse == false then
+			--	DCOpenTween:Play()
+			--	local GUICopy = GUI:Clone()
+			--	GUICopy.Parent = Player.PlayerGui
+			--	wait(0.1)
+			--	local CurrentGUI = Player.PlayerGui:FindFirstChild("DoorControllerGUI")
+			--	CurrentGUI.Frame.OpenDoor.MouseButton1Click:Connect(function()
+			--		script.SystemAPI:Invoke("Open")
+			--	end)
+			--	CurrentGUI.Frame.CloseDoor.MouseButton1Click:Connect(function()
+			--		script.SystemAPI:Invoke("Close")
+			--	end)
+			--	CurrentGUI.Frame.LockDoor.MouseButton1Click:Connect(function()
+			--		script.SystemAPI:Invoke("Lock")
+			--	end)
+			--	CurrentGUI.Frame.HoldDoor.MouseButton1Click:Connect(function()
+			--		script.SystemAPI:Invoke("Hold")
+			--	end)
+			--	DCInuse = true
+			--else
+			--	DCInuse = false
+			--	DCCloseTween:Play()
+			--	local CurrentGUI = Player.PlayerGui:FindFirstChild("DoorControllerGUI")
+			--	if CurrentGUI then
+			--		CurrentGUI:Destroy()
+			--	end
+			--end
+	------------------------------------------------------------------------
+			local UserID = Player.UserId
+			if SystemConfig["Controller-Whitelist-Enabled"] == true then
+				if table.find(SystemConfig["ControllerWL-UserIDs"], UserID) then
+					if DCInuse == false then
+						local GUICopy = GUI:Clone()
+						DCOpenTween:Play()
+						GUICopy.Parent = Player.PlayerGui
+						wait(0.1)
+						local CurrentGUI = Player.PlayerGui:FindFirstChild("DoorControllerGUI")
+						CurrentGUI.Frame.OpenDoor.MouseButton1Click:Connect(function()
+							Script.SystemAPI:Invoke("Open")
+						end)
+						CurrentGUI.Frame.CloseDoor.MouseButton1Click:Connect(function()
+							Script.SystemAPI:Invoke("Close")
+						end)
+						CurrentGUI.Frame.LockDoor.MouseButton1Click:Connect(function()
+							Script.SystemAPI:Invoke("Lock")
+						end)
+						CurrentGUI.Frame.HoldDoor.MouseButton1Click:Connect(function()
+							Script.SystemAPI:Invoke("Hold")
+						end)
+						DCInuse = true
+					else
+						DCInuse = false
+						DCCloseTween:Play()
+						local CurrentGUI = Player.PlayerGui:FindFirstChild("DoorControllerGUI")
+						if CurrentGUI then
+							CurrentGUI:Destroy()
+						end
+					end
+				else
+					for GroupID, Ranks in pairs(SystemConfig["ControllerWLGroups"]) do
+						local PlayerRank = Player:GetRankInGroup(GroupID)
+						if table.find(SystemConfig["ControllerWLGroups"][GroupID], PlayerRank) then
+							if DCInuse == false then
+								local GUICopy = GUI:Clone()
+								DCOpenTween:Play()
+								GUICopy.Parent = Player.PlayerGui
+								wait(0.1)
+								local CurrentGUI = Player.PlayerGui:FindFirstChild("DoorControllerGUI")
+								CurrentGUI.Frame.OpenDoor.MouseButton1Click:Connect(function()
+									Script.SystemAPI:Invoke("Open")
+								end)
+								CurrentGUI.Frame.CloseDoor.MouseButton1Click:Connect(function()
+									Script.SystemAPI:Invoke("Close")
+								end)
+								CurrentGUI.Frame.LockDoor.MouseButton1Click:Connect(function()
+									Script.SystemAPI:Invoke("Lock")
+								end)
+								CurrentGUI.Frame.HoldDoor.MouseButton1Click:Connect(function()
+									Script.SystemAPI:Invoke("Hold")
+								end)
+								DCInuse = true
+							else
+								DCInuse = false
+								DCCloseTween:Play()
+								local CurrentGUI = Player.PlayerGui:FindFirstChild("DoorControllerGUI")
+								if CurrentGUI then
+									CurrentGUI:Destroy()
+								end
+							end
+						else
+							return
+						end
+					end
+				end
+			else
+				if DCInuse == false then
+					local GUICopy = GUI:Clone()
+					DCOpenTween:Play()
+					GUICopy.Parent = Player.PlayerGui
+					wait(0.1)
+					local CurrentGUI = Player.PlayerGui:FindFirstChild("DoorControllerGUI")
+					CurrentGUI.Frame.OpenDoor.MouseButton1Click:Connect(function()
+						Script.SystemAPI:Invoke("Open")
+					end)
+					CurrentGUI.Frame.CloseDoor.MouseButton1Click:Connect(function()
+						Script.SystemAPI:Invoke("Close")
+					end)
+					CurrentGUI.Frame.LockDoor.MouseButton1Click:Connect(function()
+						Script.SystemAPI:Invoke("Lock")
+					end)
+					CurrentGUI.Frame.HoldDoor.MouseButton1Click:Connect(function()
+						Script.SystemAPI:Invoke("Hold")
+					end)
+					DCInuse = true
+				else
+					DCInuse = false
+					DCCloseTween:Play()
+					local CurrentGUI = Player.PlayerGui:FindFirstChild("DoorControllerGUI")
+					if CurrentGUI then
+						CurrentGUI:Destroy()
+					end
+				end
+			end
+------------------------------------------------------------------------
+		end)
+	end
+
+	local CollectionService = game:GetService("CollectionService")
+	
+	CollectionService:AddTag(Script.Parent.Parent, "Control1LOCATOR")
+
+
+	for _, reader in pairs(Script.Parent.Parent.Scanners:GetChildren()) do
+		if CollectionService:HasTag(reader, "SurfaceReader") then
+			AGController:SurfaceReader(reader)
+		end
+		if CollectionService:HasTag(reader, "SurfaceCode") then
+			AGController:SurfaceCode(reader)
+		end
+	end
+
+	for _, button in pairs(Script.Parent.Parent.Buttons:GetChildren()) do
+		if CollectionService:HasTag(button, "SurfaceExitButton") then
+			AGController:SurfaceExitButton(button)
+		end
+	end
+	
+	print("Done Loading")
+
+end
