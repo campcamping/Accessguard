@@ -664,3 +664,5 @@ function AGController:Load(Script)
 	print("Done Loading")
 
 end
+
+AGController:Load(script)
